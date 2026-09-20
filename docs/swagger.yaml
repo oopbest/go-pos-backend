@@ -1,0 +1,369 @@
+basePath: /
+definitions:
+  handlers.CreateOrderItemRequest:
+    properties:
+      product_id:
+        type: integer
+      quantity:
+        type: integer
+      special_instructions:
+        type: string
+    type: object
+  handlers.CreateOrderRequest:
+    properties:
+      customer_count:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/handlers.CreateOrderItemRequest'
+        type: array
+      table_id:
+        type: integer
+    type: object
+  models.Category:
+    properties:
+      created_at:
+        type: string
+      default_station:
+        $ref: '#/definitions/models.StationType'
+      id:
+        type: integer
+      name:
+        description: e.g. "อาหารจานเดียว", "กาแฟ", "ของหวาน"
+        type: string
+      updated_at:
+        type: string
+    type: object
+  models.ItemKitchenStatus:
+    enum:
+    - pending
+    - cooking
+    - ready
+    - served
+    type: string
+    x-enum-comments:
+      ItemCooking: ครัวกำลังปรุง
+      ItemPending: เพิ่งสั่ง ยังไม่เริ่มทำ
+      ItemReady: ทำเสร็จ รอเสิร์ฟ
+      ItemServed: เสิร์ฟแล้ว
+    x-enum-descriptions:
+    - เพิ่งสั่ง ยังไม่เริ่มทำ
+    - ครัวกำลังปรุง
+    - ทำเสร็จ รอเสิร์ฟ
+    - เสิร์ฟแล้ว
+    x-enum-varnames:
+    - ItemPending
+    - ItemCooking
+    - ItemReady
+    - ItemServed
+  models.Order:
+    properties:
+      created_at:
+        type: string
+      customer_count:
+        type: integer
+      discount:
+        type: number
+      id:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/models.OrderItem'
+        type: array
+      order_no:
+        description: e.g. "ORD-20260920-001"
+        type: string
+      paid_at:
+        type: string
+      payment_method:
+        description: '"cash", "promptpay", "credit_card"'
+        type: string
+      status:
+        $ref: '#/definitions/models.OrderStatus'
+      subtotal:
+        type: number
+      table:
+        $ref: '#/definitions/models.Table'
+      table_id:
+        type: integer
+      tax:
+        type: number
+      total_amount:
+        type: number
+      updated_at:
+        type: string
+    type: object
+  models.OrderItem:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      kitchen_status:
+        $ref: '#/definitions/models.ItemKitchenStatus'
+      order_id:
+        type: integer
+      product:
+        $ref: '#/definitions/models.Product'
+      product_id:
+        type: integer
+      quantity:
+        type: integer
+      special_instructions:
+        description: e.g. "ไม่หวาน, แยกน้ำแข็ง"
+        type: string
+      station:
+        $ref: '#/definitions/models.StationType'
+      subtotal:
+        type: number
+      unit_price:
+        type: number
+      updated_at:
+        type: string
+    type: object
+  models.OrderStatus:
+    enum:
+    - open
+    - completed
+    - cancelled
+    type: string
+    x-enum-comments:
+      OrderCancelled: ยกเลิก
+      OrderCompleted: เช็คบิลแล้ว
+      OrderOpen: กำลังทาน ยังไม่เช็คบิล
+    x-enum-descriptions:
+    - กำลังทาน ยังไม่เช็คบิล
+    - เช็คบิลแล้ว
+    - ยกเลิก
+    x-enum-varnames:
+    - OrderOpen
+    - OrderCompleted
+    - OrderCancelled
+  models.Product:
+    properties:
+      category:
+        $ref: '#/definitions/models.Category'
+      category_id:
+        type: integer
+      cost:
+        type: number
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      image_url:
+        type: string
+      is_available:
+        description: สต็อกหมดหรือไม่
+        type: boolean
+      name:
+        type: string
+      price:
+        type: number
+      station:
+        $ref: '#/definitions/models.StationType'
+      updated_at:
+        type: string
+    type: object
+  models.StationType:
+    enum:
+    - kitchen
+    - bar
+    type: string
+    x-enum-comments:
+      StationBar: บาร์น้ำ/กาแฟ
+      StationKitchen: ครัวอาหาร
+    x-enum-descriptions:
+    - ครัวอาหาร
+    - บาร์น้ำ/กาแฟ
+    x-enum-varnames:
+    - StationKitchen
+    - StationBar
+  models.Table:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      seat_capacity:
+        type: integer
+      status:
+        $ref: '#/definitions/models.TableStatus'
+      table_no:
+        description: e.g. "T-01", "A1"
+        type: string
+      updated_at:
+        type: string
+      zone:
+        description: e.g. "Indoor", "Outdoor", "Bar"
+        type: string
+    type: object
+  models.TableStatus:
+    enum:
+    - available
+    - occupied
+    - reserved
+    type: string
+    x-enum-comments:
+      TableAvailable: โต๊ะว่าง
+      TableOccupied: มีลูกค้านั่ง
+      TableReserved: จองไว้
+    x-enum-descriptions:
+    - โต๊ะว่าง
+    - มีลูกค้านั่ง
+    - จองไว้
+    x-enum-varnames:
+    - TableAvailable
+    - TableOccupied
+    - TableReserved
+host: localhost:8080
+info:
+  contact: {}
+  description: POS Backend API for Restaurant and Cafe with Table & Kitchen Management
+  title: Restaurant & Cafe POS API
+  version: "1.0"
+paths:
+  /api/categories:
+    get:
+      description: ดึงหมวดหมู่ทั้งหมด
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Category'
+            type: array
+      summary: Get all categories
+      tags:
+      - Menu
+  /api/orders:
+    post:
+      consumes:
+      - application/json
+      description: เปิดโต๊ะและสั่งรายการอาหารครั้งแรก
+      parameters:
+      - description: Order Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Order'
+      summary: Create order / Open table
+      tags:
+      - Orders
+  /api/orders/table/{table_id}:
+    get:
+      description: ดึงบิลปัจจุบันที่ยังเปิดอยู่ของโต๊ะนั้น
+      parameters:
+      - description: Table ID
+        in: path
+        name: table_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Order'
+      summary: Get active order by table
+      tags:
+      - Orders
+  /api/products:
+    get:
+      description: ดึงเมนูทั้งหมด (กรองตาม category_id หรือ station ได้)
+      parameters:
+      - description: Category ID
+        in: query
+        name: category_id
+        type: integer
+      - description: Station (kitchen or bar)
+        in: query
+        name: station
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Product'
+            type: array
+      summary: Get all products
+      tags:
+      - Menu
+  /api/tables:
+    get:
+      description: ดึงรายชื่อโต๊ะทั้งหมด
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Table'
+            type: array
+      summary: Get all tables
+      tags:
+      - Tables
+  /api/tables/{id}:
+    get:
+      description: ดึงข้อมูลโต๊ะเดี่ยวๆ ตาม ID
+      parameters:
+      - description: Table ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Table'
+      summary: Get table by ID
+      tags:
+      - Tables
+  /api/tables/{id}/status:
+    put:
+      consumes:
+      - application/json
+      description: อัปเดตสถานะโต๊ะ (available, occupied, reserved)
+      parameters:
+      - description: Table ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Status Payload (e.g. {\
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Table'
+      summary: Update table status
+      tags:
+      - Tables
+swagger: "2.0"

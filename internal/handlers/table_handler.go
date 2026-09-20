@@ -6,7 +6,12 @@ import (
 	"github.com/oopbest/go-pos-backend/internal/models"
 )
 
-// GET /api/tables - ดึงรายชื่อโต๊ะทั้งหมด เรียงตามเลขโต๊ะ
+// @Summary      Get all tables
+// @Description  ดึงรายชื่อโต๊ะทั้งหมด
+// @Tags         Tables
+// @Produce      json
+// @Success      200  {array}   models.Table
+// @Router       /api/tables [get]
 func GetTables(c *fiber.Ctx) error {
 	var tables []models.Table
 	if err := database.DB.Order("table_no asc").Find(&tables).Error; err != nil {
@@ -17,7 +22,13 @@ func GetTables(c *fiber.Ctx) error {
 	return c.JSON(tables)
 }
 
-// GET /api/tables/:id - ดึงข้อมูลโต๊ะเดี่ยวๆ ตาม ID
+// @Summary      Get table by ID
+// @Description  ดึงข้อมูลโต๊ะเดี่ยวๆ ตาม ID
+// @Tags         Tables
+// @Produce      json
+// @Param        id   path      int  true  "Table ID"
+// @Success      200  {object}  models.Table
+// @Router       /api/tables/{id} [get]
 func GetTableByID(c *fiber.Ctx) error {
 	id := c.Params("id")
 	var table models.Table
@@ -29,7 +40,15 @@ func GetTableByID(c *fiber.Ctx) error {
 	return c.JSON(table)
 }
 
-// PUT /api/tables/:id/status - อัปเดตสถานะโต๊ะ (available, occupied, reserved)
+// @Summary      Update table status
+// @Description  อัปเดตสถานะโต๊ะ (available, occupied, reserved)
+// @Tags         Tables
+// @Accept       json
+// @Produce      json
+// @Param        id    path      int     true  "Table ID"
+// @Param        body  body      object  true  "Status Payload (e.g. {\"status\": \"available\"})"
+// @Success      200   {object}  models.Table
+// @Router       /api/tables/{id}/status [put]
 func UpdateTableStatus(c *fiber.Ctx) error {
 	id := c.Params("id")
 	type StatusRequest struct {

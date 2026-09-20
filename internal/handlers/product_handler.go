@@ -6,7 +6,12 @@ import (
 	"github.com/oopbest/go-pos-backend/internal/models"
 )
 
-// GET /api/categories - ดึงหมวดหมู่ทั้งหมด
+// @Summary      Get all categories
+// @Description  ดึงหมวดหมู่ทั้งหมด
+// @Tags         Menu
+// @Produce      json
+// @Success      200  {array}  models.Category
+// @Router       /api/categories [get]
 func GetCategories(c *fiber.Ctx) error {
 	var categories []models.Category
 	if err := database.DB.Order("id asc").Find(&categories).Error; err != nil {
@@ -17,7 +22,14 @@ func GetCategories(c *fiber.Ctx) error {
 	return c.JSON(categories)
 }
 
-// GET /api/products - ดึงเมนูทั้งหมด (รองรับ filter ตาม ?category_id=1 หรือ ?station=kitchen)
+// @Summary      Get all products
+// @Description  ดึงเมนูทั้งหมด (กรองตาม category_id หรือ station ได้)
+// @Tags         Menu
+// @Produce      json
+// @Param        category_id  query     int     false  "Category ID"
+// @Param        station      query     string  false  "Station (kitchen or bar)"
+// @Success      200          {array}   models.Product
+// @Router       /api/products [get]
 func GetProducts(c *fiber.Ctx) error {
 	categoryID := c.Query("category_id")
 	station := c.Query("station")
