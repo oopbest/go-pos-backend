@@ -8,6 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/oopbest/go-pos-backend/internal/config"
 	"github.com/oopbest/go-pos-backend/internal/database"
+	"github.com/oopbest/go-pos-backend/internal/handlers"
 )
 
 func main() {
@@ -30,6 +31,18 @@ func main() {
 			"message": "Restaurant POS Backend is connected to PostgreSQL!",
 		})
 	})
+
+	// 4. API Routes Group
+	api := app.Group("/api")
+
+	// Table Routes
+	api.Get("/tables", handlers.GetTables)
+	api.Get("/tables/:id", handlers.GetTableByID)
+	api.Put("/tables/:id/status", handlers.UpdateTableStatus)
+
+	// Menu & Category Routes
+	api.Get("/categories", handlers.GetCategories)
+	api.Get("/products", handlers.GetProducts)
 
 	log.Printf("Server starting on port %s...", cfg.Port)
 	log.Fatal(app.Listen(":" + cfg.Port))
