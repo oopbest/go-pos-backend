@@ -6,23 +6,31 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/oopbest/go-pos-backend/internal/config"
+	"github.com/oopbest/go-pos-backend/internal/database"
 )
 
 func main() {
+	// 1. โหลดการตั้งค่า
+	cfg := config.LoadConfig()
+
+	// 2. เชื่อมต่อฐานข้อมูล & Auto-migrate
+	database.ConnectDB(cfg)
+
+	// 3. สร้าง Fiber Server
 	app := fiber.New()
 
-	// Middleware
 	app.Use(logger.New())
-	app.Use(cors.New()) // เพื่อให้ React Frontend เรียก API ข้าม Port ได้
+	app.Use(cors.New())
 
-	// Health Check Route
+	// Health Check
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
 			"status":  "ok",
-			"message": "Restaurant POS Backend is running!",
+			"message": "Restaurant POS Backend is connected to PostgreSQL!",
 		})
 	})
 
-	log.Println("Server starting on port 8080...")
-	log.Fatal(app.Listen(":8080"))
+	log.Printf("Server starting on port %s...", cfg.Port)
+	log.Fatal(app.Listen(":" + cfg.Port))
 }
