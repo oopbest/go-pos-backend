@@ -22,6 +22,17 @@ type CreateOrderRequest struct {
 	Items         []CreateOrderItemRequest `json:"items"`
 }
 
+// DTO สำหรับสั่งอาหารเพิ่ม
+type AddItemsRequest struct {
+	Items []CreateOrderItemRequest `json:"items"`
+}
+
+// DTO สำหรับการเช็คบิล
+type CheckoutRequest struct {
+	PaymentMethod string  `json:"payment_method"` // "cash", "promptpay", "credit_card"
+	Discount      float64 `json:"discount"`
+}
+
 // @Summary      Create order / Open table
 // @Description  เปิดโต๊ะและสั่งรายการอาหารครั้งแรก
 // @Tags         Orders
@@ -146,5 +157,131 @@ func GetActiveOrderByTableID(c *fiber.Ctx) error {
 		})
 	}
 
+	return c.JSON(order)
+}
+
+// @Summary      Add items to existing order
+// @Description  สั่งอาหาร/เครื่องดื่มเพิ่มเข้าบิลเดิม
+// @Tags         Orders
+// @Accept       json
+// @Produce      json
+// @Param        id    path      int              true  "Order ID"
+// @Param        body  body      AddItemsRequest  true  "New Items"
+// @Success      200   {object}  models.Order
+// @Router       /api/orders/{id}/items [post]
+func AddItemsToOrder(c *fiber.Ctx) error {
+	orderID := c.Params("id")
+
+	var req AddItemsRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
+	}
+
+	tx := database.DB.Begin()
+
+	var order models.Order
+	if err := tx.First(&order, orderID).Error; err != nil {
+		tx.Rollback()
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Order not found"})
+	}
+
+	if order.Status != models.OrderOpen {
+		tx.Rollback()
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cannot add items to a closed order"})
+	}
+
+	var addedSubtotal float64
+	for _, itemReq := range req.Items {
+		var product models.Product
+		if err := tx.First(&product, itemReq.ProductID).Error; err != nil {
+			tx.Rollback()
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fmt.Sprintf("Product ID %d not found", itemReq.ProductID)})
+		}
+
+		itemSubtotal := product.Price * float64(itemReq.Quantity)
+		addedSubtotal += itemSubtotal
+
+		orderItem := models.OrderItem{
+			OrderID:             order.ID,
+			ProductID:           product.ID,
+			Quantity:            itemReq.Quantity,
+			UnitPrice:           product.Price,
+			Subtotal:            itemSubtotal,
+			SpecialInstructions: itemReq.SpecialInstructions,
+			KitchenStatus:       models.ItemPending,
+			Station:             product.Station,
+		}
+
+		if err := tx.Create(&orderItem).Error; err != nil {
+			tx.Rollback()
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to add order item"})
+		}
+	}
+
+	order.Subtotal += addedSubtotal
+	order.TotalAmount += addedSubtotal
+	if err := tx.Save(&order).Error; err != nil {
+		tx.Rollback()
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update order total"})
+	}
+
+	tx.Commit()
+
+	database.DB.Preload("Table").Preload("Items.Product").First(&order, order.ID)
+	return c.JSON(order)
+}
+
+// @Summary      Checkout order
+// @Description  คิดเงิน ปิดบิล และเปลี่ยนสถานะโต๊ะเป็น available
+// @Tags         Orders
+// @Accept       json
+// @Produce      json
+// @Param        id    path      int              true  "Order ID"
+// @Param        body  body      CheckoutRequest  true  "Checkout Details"
+// @Success      200   {object}  models.Order
+// @Router       /api/orders/{id}/checkout [post]
+func CheckoutOrder(c *fiber.Ctx) error {
+	orderID := c.Params("id")
+
+	var req CheckoutRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
+	}
+
+	tx := database.DB.Begin()
+
+	var order models.Order
+	if err := tx.First(&order, orderID).Error; err != nil {
+		tx.Rollback()
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Order not found"})
+	}
+
+	if order.Status != models.OrderOpen {
+		tx.Rollback()
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Order is already closed or cancelled"})
+	}
+
+	now := time.Now()
+	order.Discount = req.Discount
+	order.TotalAmount = order.Subtotal - req.Discount
+	order.PaymentMethod = req.PaymentMethod
+	order.Status = models.OrderCompleted
+	order.PaidAt = &now
+
+	if err := tx.Save(&order).Error; err != nil {
+		tx.Rollback()
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to complete order"})
+	}
+
+	// คืนสถานะโต๊ะเป็น "available" เพื่อรับลูกค้ารายต่อไป
+	var table models.Table
+	if err := tx.First(&table, order.TableID).Error; err == nil {
+		table.Status = models.TableAvailable
+		tx.Save(&table)
+	}
+
+	tx.Commit()
+
+	database.DB.Preload("Table").Preload("Items.Product").First(&order, order.ID)
 	return c.JSON(order)
 }

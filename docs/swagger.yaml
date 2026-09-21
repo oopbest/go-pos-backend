@@ -1,5 +1,20 @@
 basePath: /
 definitions:
+  handlers.AddItemsRequest:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/handlers.CreateOrderItemRequest'
+        type: array
+    type: object
+  handlers.CheckoutRequest:
+    properties:
+      discount:
+        type: number
+      payment_method:
+        description: '"cash", "promptpay", "credit_card"'
+        type: string
+    type: object
   handlers.CreateOrderItemRequest:
     properties:
       product_id:
@@ -19,6 +34,13 @@ definitions:
         type: array
       table_id:
         type: integer
+    type: object
+  handlers.UpdateKitchenStatusRequest:
+    properties:
+      status:
+        allOf:
+        - $ref: '#/definitions/models.ItemKitchenStatus'
+        description: '"pending", "cooking", "ready", "served"'
     type: object
   models.Category:
     properties:
@@ -240,6 +262,53 @@ paths:
       summary: Get all categories
       tags:
       - Menu
+  /api/kitchen/items:
+    get:
+      description: ดึงรายการอาหารที่ต้องทำในครัว/บาร์ (pending, cooking, ready)
+      parameters:
+      - description: Station filter (kitchen or bar)
+        in: query
+        name: station
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.OrderItem'
+            type: array
+      summary: Get kitchen items
+      tags:
+      - Kitchen
+  /api/kitchen/items/{id}/status:
+    put:
+      consumes:
+      - application/json
+      description: อัปเดตสถานะของจานอาหาร (เช่น กำลังทำ, ทำเสร็จแล้ว, เสิร์ฟแล้ว)
+      parameters:
+      - description: OrderItem ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: New Kitchen Status
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateKitchenStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.OrderItem'
+      summary: Update item kitchen status
+      tags:
+      - Kitchen
   /api/orders:
     post:
       consumes:
@@ -260,6 +329,60 @@ paths:
           schema:
             $ref: '#/definitions/models.Order'
       summary: Create order / Open table
+      tags:
+      - Orders
+  /api/orders/{id}/checkout:
+    post:
+      consumes:
+      - application/json
+      description: คิดเงิน ปิดบิล และเปลี่ยนสถานะโต๊ะเป็น available
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Checkout Details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CheckoutRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Order'
+      summary: Checkout order
+      tags:
+      - Orders
+  /api/orders/{id}/items:
+    post:
+      consumes:
+      - application/json
+      description: สั่งอาหาร/เครื่องดื่มเพิ่มเข้าบิลเดิม
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: New Items
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.AddItemsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Order'
+      summary: Add items to existing order
       tags:
       - Orders
   /api/orders/table/{table_id}:

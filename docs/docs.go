@@ -38,6 +38,78 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/kitchen/items": {
+            "get": {
+                "description": "ดึงรายการอาหารที่ต้องทำในครัว/บาร์ (pending, cooking, ready)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Kitchen"
+                ],
+                "summary": "Get kitchen items",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Station filter (kitchen or bar)",
+                        "name": "station",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.OrderItem"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/kitchen/items/{id}/status": {
+            "put": {
+                "description": "อัปเดตสถานะของจานอาหาร (เช่น กำลังทำ, ทำเสร็จแล้ว, เสิร์ฟแล้ว)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Kitchen"
+                ],
+                "summary": "Update item kitchen status",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "OrderItem ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New Kitchen Status",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.UpdateKitchenStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.OrderItem"
+                        }
+                    }
+                }
+            }
+        },
         "/api/orders": {
             "post": {
                 "description": "เปิดโต๊ะและสั่งรายการอาหารครั้งแรก",
@@ -89,6 +161,88 @@ const docTemplate = `{
                         "name": "table_id",
                         "in": "path",
                         "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Order"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/orders/{id}/checkout": {
+            "post": {
+                "description": "คิดเงิน ปิดบิล และเปลี่ยนสถานะโต๊ะเป็น available",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Checkout order",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Order ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Checkout Details",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CheckoutRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Order"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/orders/{id}/items": {
+            "post": {
+                "description": "สั่งอาหาร/เครื่องดื่มเพิ่มเข้าบิลเดิม",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Add items to existing order",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Order ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New Items",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.AddItemsRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -233,6 +387,29 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "handlers.AddItemsRequest": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handlers.CreateOrderItemRequest"
+                    }
+                }
+            }
+        },
+        "handlers.CheckoutRequest": {
+            "type": "object",
+            "properties": {
+                "discount": {
+                    "type": "number"
+                },
+                "payment_method": {
+                    "description": "\"cash\", \"promptpay\", \"credit_card\"",
+                    "type": "string"
+                }
+            }
+        },
         "handlers.CreateOrderItemRequest": {
             "type": "object",
             "properties": {
@@ -261,6 +438,19 @@ const docTemplate = `{
                 },
                 "table_id": {
                     "type": "integer"
+                }
+            }
+        },
+        "handlers.UpdateKitchenStatusRequest": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "description": "\"pending\", \"cooking\", \"ready\", \"served\"",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.ItemKitchenStatus"
+                        }
+                    ]
                 }
             }
         },

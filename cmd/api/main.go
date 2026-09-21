@@ -53,6 +53,12 @@ func main() {
 	// Order Routes
 	api.Post("/orders", handlers.CreateOrder)
 	api.Get("/orders/table/:table_id", handlers.GetActiveOrderByTableID)
+	api.Post("/orders/:id/items", handlers.AddItemsToOrder)
+	api.Post("/orders/:id/checkout", handlers.CheckoutOrder)
+
+	// Kitchen Routes
+	api.Get("/kitchen/items", handlers.GetKitchenItems)
+	api.Put("/kitchen/items/:id/status", handlers.UpdateItemKitchenStatus)
 
 	log.Printf("Server starting on port %s...", cfg.Port)
 	log.Printf("Swagger UI available at http://localhost:%s/swagger/", cfg.Port)
